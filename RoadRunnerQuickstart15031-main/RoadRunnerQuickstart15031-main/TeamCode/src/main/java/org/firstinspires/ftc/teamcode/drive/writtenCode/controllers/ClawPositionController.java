@@ -13,7 +13,8 @@ public class ClawPositionController {
         COLLECT_SUB,
         SCORE,
         RUNTO,
-        RUNG;
+        RUNG,
+        RUNG_SIDE_RETRACT;
     }
     public ClawPositionStatus currentStatus = ClawPositionStatus.INIT;
     public ClawPositionStatus previousStatus=null;
@@ -21,7 +22,8 @@ public class ClawPositionController {
     public static double collect_position = 0.54;
     public static double sub_position = 0;
     public static double collect_sub_position = 0.094;
-    public  static  double rung_position = 0.09;
+    public  static  double rung_position = 0.12;
+    public static  double rung_side_retract = 0.35;
     public static double score = 0.39;
     public Servo clawPosition = null;
     public ClawPositionController(RobotMap robot) {
@@ -61,6 +63,11 @@ public class ClawPositionController {
                 case RUNG:
                 {
                     this.clawPosition.setPosition(rung_position);
+                    break;
+                }
+                case RUNG_SIDE_RETRACT:
+                {
+                    this.clawPosition.setPosition(rung_side_retract);
                     break;
                 }
             }

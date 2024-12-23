@@ -69,12 +69,13 @@ public class TeleOpCode extends LinearOpMode {
     ElapsedTime timer_release = new ElapsedTime();
 
     double time_to_slides = 0.35;
-    double time_to_start_beam = 0.15;
+    double time_to_start_beam = 0.05;
     int linkage_target_position = 0;
     int slides_target_position = 0;
     double claw_rotate_target =0;
     public double rate=1;
     boolean ok=false;
+    boolean ok_rung = false;
     @Override
     public void runOpMode() throws InterruptedException {
         telemetry.addData("Status", "Initialized");
@@ -94,7 +95,7 @@ public class TeleOpCode extends LinearOpMode {
         linkageController.update(LinkageController.init_position,linkage_target_position);
         slidesController.update(SlidesController.init_position,slides_target_position);
 
-        clawRotateController.update(ClawRotateController.init_position);
+        clawRotateController.update(ClawRotateController.init_position,0);
         fourbarController.update();
         clawPositionController.update();
         clawController.update();
@@ -133,6 +134,7 @@ public class TeleOpCode extends LinearOpMode {
         Gamepad previousGamepad1 = new Gamepad();
         Gamepad previousGamepad2 = new Gamepad();
         cameraController.startCamera();
+
         waitForStart();
         GlobalTimer.reset();
         while(opModeIsActive())
@@ -146,6 +148,28 @@ public class TeleOpCode extends LinearOpMode {
 
             currentGamepad1.copy(gamepad1);
             currentGamepad2.copy(gamepad2);
+            if(currentGamepad2.left_bumper && !previousGamepad2.left_bumper)
+            {
+                cameraController.toggleDetectionColor();
+                if(cameraController.getCurrentDetectionColor()=="Blue") {
+                    gamepad2.rumbleBlips(1);
+                    gamepad1.rumbleBlips(1);
+                }
+                else {
+                    gamepad2.rumbleBlips(2);
+                    gamepad1.rumbleBlips(2);
+                }
+            }
+            if(cameraController.getCurrentDetectionColor()=="Yellow")
+            {
+                gamepad1.setLedColor(255,255,0,1000);
+                gamepad2.setLedColor(255,255,0,100);
+            }
+            else if(cameraController.getCurrentDetectionColor()=="Blue")
+            {
+                gamepad1.setLedColor(0,0,255,1000);
+                gamepad2.setLedColor(0,0,255,100);
+            }
             if(currentGamepad1.right_bumper && !previousGamepad1.right_bumper)
             {
                 switch(linkageSlidesController.currentStatus){
@@ -158,8 +182,35 @@ public class TeleOpCode extends LinearOpMode {
                     case EXTEND_SLIDES:
                         scoreSystemController.timer.reset();
                         SlidesTimer.reset();
+//                        time_to_slides=2;
                         ok=true;
-                        scoreSystemController.currentStatus = ScoreSystemController.ScoreSystemStatus.LOWER_FOURBAR_SUB;
+                        clawRotateController.currentStatus= ClawRotateController.ClawRotateStatus.AUTO_ALIGN;
+                        scoreSystemController.currentStatus = ScoreSystemController.ScoreSystemStatus.LOWER_FOURBAR_SUB_AUTO_ALIGN;
+                        rate = 1;
+//                        scoreSystemController.timer.reset();
+//                        SlidesTimer.reset();
+//                        ok = true;
+//                        scoreSystemController.currentStatus = ScoreSystemController.ScoreSystemStatus.LOWER_FOURBAR_SUB;
+//                        rate = 1;
+                        break;
+                }
+            }
+            if(currentGamepad1.left_bumper && !previousGamepad1.left_bumper)
+            {
+                switch(linkageSlidesController.currentStatus){
+                    case INIT:
+                        clawController.currentStatus = ClawController.ClawStatus.OPEN;
+                        linkageSlidesController.currentStatus = LinkageSlidesController.LinkageSlidesStatus.LOWER_LINKAGE;
+                        scoreSystemController.currentStatus= ScoreSystemController.ScoreSystemStatus.COLLECT_FROM_SUB;
+                        rate = 0.4;
+                        break;
+                    case EXTEND_SLIDES:
+                        scoreSystemController.timer.reset();
+                        SlidesTimer.reset();
+                        ok_rung = true;
+//                        time_to_slides=2;
+                        clawRotateController.currentStatus= ClawRotateController.ClawRotateStatus.AUTO_ALIGN;
+                        scoreSystemController.currentStatus = ScoreSystemController.ScoreSystemStatus.LOWER_FOURBAR_SUB_AUTO_ALIGN_RUNG;
                         rate = 1;
                         break;
                 }
@@ -167,9 +218,16 @@ public class TeleOpCode extends LinearOpMode {
             if(SlidesTimer.seconds()>time_to_slides && ok==true)
             {
                 linkageSlidesController.currentStatus = LinkageSlidesController.LinkageSlidesStatus.INIT;
+                time_to_slides = 0.35;
                 ok=false;
             }
-            double test = 1;
+            if(SlidesTimer.seconds()>time_to_slides && ok_rung==true)
+            {
+                linkageSlidesController.currentStatus = LinkageSlidesController.LinkageSlidesStatus.INIT_INTER_RUNG;
+                linkageSlidesController.timer_inter.reset();
+                time_to_slides = 0.35;
+                ok_rung=false;
+            }
             if(currentGamepad2.y && !previousGamepad2.y)
             {
                 switch(scoreSystemController.currentStatus){
@@ -222,23 +280,45 @@ public class TeleOpCode extends LinearOpMode {
                 scoreSystemController.currentStatus = ScoreSystemController.ScoreSystemStatus.LOWER_FOURBAR;
                 BeamTimer.reset();
             }
-            if (gamepad2.left_stick_y <0 || gamepad1.right_stick_y<-0.7 && linkageSlidesController.currentStatus == LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES)
+            if (gamepad2.left_stick_y <0 || (gamepad1.right_stick_y<-0.4 && linkageSlidesController.currentStatus == LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES) )
             {
-                int manual_rate = 5000;
-                if(gamepad1.right_stick_y<-0.7 && linkageSlidesController.currentStatus == LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES) manual_rate = 2000;
-                slidesController.currentStatus = SlidesController.SlidesStatus.RUNTO;
-                slides_target_position =
-                        Math.max(-52000, slides_current_position-manual_rate);
+                int manual_rate = 0;
+                if(gamepad1.right_stick_y<-0.4 && linkageSlidesController.currentStatus == LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES && robot.encoderLinkage.getCurrentPosition()<-3050)
+                {
+                    manual_rate = 1500;
+                    slidesController.currentStatus= SlidesController.SlidesStatus.RUNTO_H;
+                    slides_target_position =
+                            Math.max(-36000, Math.min(slides_current_position-manual_rate,-18000));
+                }
+                else if(gamepad2.left_stick_y < 0 && linkageSlidesController.currentStatus != LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES)
+                {
+                    manual_rate = 5000;
+                    slidesController.currentStatus = SlidesController.SlidesStatus.RUNTO;
+                    slides_target_position =
+                            Math.max(-52000, Math.min(slides_current_position-manual_rate,-18000));
+                }
+
             }
             else
-            if (gamepad2.left_stick_y >0 || (gamepad1.right_stick_y>0.7 && linkageSlidesController.currentStatus == LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES))
+            if (gamepad2.left_stick_y >0 || (gamepad1.right_stick_y>0.4 && linkageSlidesController.currentStatus == LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES))
             {
                 /// Ii dau clip la currentPosition intre initPosition si highPosition.
-                int manual_rate = 5000;
-                if(gamepad1.right_stick_y>0.7 && linkageSlidesController.currentStatus == LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES) manual_rate = 2000;
-                slidesController.currentStatus = SlidesController.SlidesStatus.RUNTO;
-                slides_target_position =
-                        Math.max(-52000, slides_current_position+manual_rate);  //Math.max(slides_current_position+10,//era +10, dar mergea invers 0)
+                int manual_rate = 0;
+                if(gamepad1.right_stick_y>0.4 && linkageSlidesController.currentStatus == LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES && robot.encoderLinkage.getCurrentPosition()<-3050)
+                {
+                    manual_rate = 1500;
+                    slidesController.currentStatus= SlidesController.SlidesStatus.RUNTO_H;
+                    slides_target_position =
+                            Math.max(- 36000, Math.min(slides_current_position+manual_rate,-20000));
+                }
+                else if(gamepad2.left_stick_y > 0 && linkageSlidesController.currentStatus != LinkageSlidesController.LinkageSlidesStatus.EXTEND_SLIDES)
+                {
+                    manual_rate = 5000;
+                    slidesController.currentStatus = SlidesController.SlidesStatus.RUNTO;
+                    slides_target_position =
+                            Math.max(- 52000, Math.min(slides_current_position+manual_rate,-20000));
+                }
+                  //Math.max(slides_current_position+10,//era +10, dar mergea invers 0)
             }
             else
             {
@@ -309,12 +389,58 @@ public class TeleOpCode extends LinearOpMode {
                           }
                }
             }
+            if(currentGamepad2.right_bumper && !previousGamepad2.right_bumper)
+            {
+                switch(fourbarController.currentStatus)
+                {
+                    case RUNG:
+                    {
+                        scoreSystemController.currentStatus= ScoreSystemController.ScoreSystemStatus.RUNG_PARA;
+                        break;
+                    }
+                    case RUNG_PARA:
+                    {
+                        scoreSystemController.currentStatus= ScoreSystemController.ScoreSystemStatus.RUNG;
+                        break;
+                    }
+                }
+            }
+//            if(currentGamepad2.right_bumper && !previousGamepad2.right_bumper)
+//            {
+//                switch (linkageSlidesController.currentStatus) {
+//                    default:
+//                        switch (clawController.currentStatus) {
+//                            case CLOSE:
+//                                ScoreSystemController.timer_feed.reset();
+//                                scoreSystemController.currentStatus= ScoreSystemController.ScoreSystemStatus.FEED;
+//                                break;
+//                            case OPEN:
+//                                clawController.currentStatus = ClawController.ClawStatus.CLOSE;
+//                                fourbarController.currentStatus = FourbarController.FourbarStatus.INIT;
+//                                break;
+//                        }
+//                        break;
+//                    case SCORE:
+//                    case BSK_HIGH:
+//                    case BSK_LOW:
+//                        switch(scoreSystemController.currentStatus)
+//                        {
+//                            case SCORE:
+//                                scoreSystemController.timer_flick.reset();
+//                                scoreSystemController.currentStatus = ScoreSystemController.ScoreSystemStatus.FLICK;
+//                                break;
+//                            case FLICK:
+//                                scoreSystemController.currentStatus= ScoreSystemController.ScoreSystemStatus.SCORE;
+//                                break;
+//                        }
+//                }
+//            }
             linkageController.update(linkage_current_position,linkage_target_position);
             slidesController.update(slides_current_position,slides_target_position);
             clawController.update();
             fourbarController.update();
             clawPositionController.update();
-            clawRotateController.update(claw_rotate_target);
+            clawRotateController.update(claw_rotate_target, cameraController.getOrientationAngle());
             scoreSystemController.update();
             linkageSlidesController.update();
 
@@ -323,10 +449,16 @@ public class TeleOpCode extends LinearOpMode {
             telemetry.addData("beam", beam.getState());
             telemetry.addData("score system", scoreSystemController.currentStatus);
             telemetry.addData("linkageslides system", linkageSlidesController.currentStatus);
-            telemetry.addData("ok", ok);
             telemetry.addData("slides", slidesController.currentStatus);
-            telemetry.addData("timer_release", timer_release.seconds());
+            telemetry.addData("timer_inter_rung", linkageSlidesController.timer_inter);
+            telemetry.addData("slides_target", slides_target_position);
+            telemetry.addData("timer_scoresystem", scoreSystemController.timer.seconds());
+            telemetry.addData("claw_rotate", clawRotateController.currentStatus);
+            telemetry.addData("claw_rotate", clawRotateController.currentStatus);
+            telemetry.addData("angle camera", cameraController.getOrientationAngle());
+            telemetry.addData("color detecting", cameraController.getCurrentDetectionColor());
             telemetry.update();
         }
+        cameraController.stopCamera();
     }
 }

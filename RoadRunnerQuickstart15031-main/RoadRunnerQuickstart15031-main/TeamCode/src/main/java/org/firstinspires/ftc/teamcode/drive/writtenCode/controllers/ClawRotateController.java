@@ -10,6 +10,7 @@ public class ClawRotateController {
         INIT,
         MINUS,MINUS2,
         PLUS,PLUS2,
+        AUTO_ALIGN,
         RUNTO;
     }
     public ClawRotateStatus currentStatus = ClawRotateStatus.INIT;
@@ -19,7 +20,7 @@ public class ClawRotateController {
     public ClawRotateController(RobotMap robot) {
         this.clawRotate=robot.clawRotate;
     }
-    public void update(double target)
+    public void update(double target, double angle)
     {
         if(currentStatus!=previousStatus || currentStatus == ClawRotateStatus.RUNTO){
             previousStatus=currentStatus;
@@ -48,6 +49,31 @@ public class ClawRotateController {
                 case MINUS2:
                 {
                     this.clawRotate.setPosition(init_position-0.315);
+                    break;
+                }
+                case AUTO_ALIGN:
+                {
+                    if(0<=angle && angle<=22)
+                    {
+                        currentStatus = ClawRotateStatus.PLUS2;
+                    }
+                    else if(22<angle && angle<=67)
+                    {
+                        currentStatus = ClawRotateStatus.PLUS;
+                    }
+                    else if(67<angle && angle<=112)
+                    {
+                        currentStatus = ClawRotateStatus.INIT;
+                    }
+                    else if(112<angle && angle<=157)
+                    {
+
+                        currentStatus=ClawRotateStatus.MINUS;
+                    }
+                    else if(157<angle && angle<=180)
+                    {
+                        currentStatus=ClawRotateStatus.MINUS2;
+                    }
                     break;
                 }
                 case RUNTO:

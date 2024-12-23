@@ -17,7 +17,7 @@ public class SlidesController {
         LOW_RUNG,
         LOW_RUNG_SCORE,
         HIGH_RUNG,
-        HIGH_RUNG_SCORE
+        RUNTO_H, HIGH_RUNG_SCORE
     }
     public SlidesStatus currentStatus = SlidesStatus.INIT;
     public SlidesStatus previousStatus = null;
@@ -27,7 +27,7 @@ public class SlidesController {
     public static int bsk_mid_position = -900;
     public static int bsk_high_position = -51500;
     public static int low_rung = -7000;
-    public static int high_rung = -27000;
+    public static int high_rung = -30000;
     public static int low_rung_score = -6000;
     public static int high_rung_score = -19000;
     public int current_position = init_position;
@@ -40,7 +40,7 @@ public class SlidesController {
     SimplePIDController PID = null;
 
     public static double KpH = 0.00025;//0.00325
-    public static double KiH = 0.0001;//0.0022
+    public static double KiH = 0;//0.0022
     public static double KdH = 0.001;
     public static double Kp = 0.00025;//0.00325
     public static double Ki = 0.0001;//0.0022
@@ -59,7 +59,7 @@ public class SlidesController {
         slidesPID.maxOutput = maxSpeed;
         slidesPID_horizontal = new SimplePIDController(KpH, KiH, KdH);
         slidesPID_horizontal.targetValue = init_position;
-        slidesPID_horizontal.maxOutput = maxSpeed;
+        slidesPID_horizontal.maxOutput = 1;
         PID=slidesPID;
     }
     public void update(int slides_position, int runto_target)
@@ -71,7 +71,7 @@ public class SlidesController {
         this.slidesMid.setPower(-powerColectare);
 
         double slides_current_position = encoderSlides.getCurrentPosition();
-        if(currentStatus!=previousStatus || currentStatus==SlidesStatus.RUNTO){
+        if(currentStatus!=previousStatus || currentStatus==SlidesStatus.RUNTO || currentStatus==SlidesStatus.RUNTO_H){
             previousStatus=currentStatus;
             switch(currentStatus) {
                 case INIT:
@@ -110,6 +110,12 @@ public class SlidesController {
                     PID.targetValue = runto_target;
                     break;
                 }
+                case RUNTO_H:
+                {
+                    PID=slidesPID_horizontal;
+                    PID.targetValue=runto_target;
+                    break;
+                }
                 case LOW_RUNG:
                 {
                     PID=slidesPID;
@@ -136,12 +142,19 @@ public class SlidesController {
                 }
             }
         }
-        if (Kp!=PID.p || Kd!=PID.d || Ki!=PID.i || maxSpeed !=PID.maxOutput )
+        if (Kp!=PID.p || Kd!=PID.d || Ki!=PID.i || maxSpeed !=PID.maxOutput && PID==slidesPID)
         {
             PID.p = Kp;
             PID.d = Kd;
             PID.i = Ki;
             PID.maxOutput = maxSpeed;
+        }
+        if (KpH!=PID.p || KdH!=PID.d || KiH!=PID.i || maxSpeed !=PID.maxOutput && PID==slidesPID_horizontal)
+        {
+            PID.p = KpH;
+            PID.d = KdH;
+            PID.i = KiH;
+            PID.maxOutput = 1;
         }
     }
 }

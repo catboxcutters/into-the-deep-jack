@@ -23,9 +23,9 @@ import java.util.List;
 @Autonomous(group = "Testers")
 public class tuning_slides extends LinearOpMode {
     public static double Kp = 0.00025;//0.00325
-    public static double Ki = 0.0001;//0.0022
+    public static double Ki = 0;//0.0022
     public static double Kd = 0.001;
-    public static double maxSpeed = 1;
+    public static double maxSpeed = 0.5;
     public static double RetractedPosition = 0 , ExtendedPosition = -50000;
     public static double vMax = 0, AccMax = 0, JerkMax =0 , EndPos = 700;
     int TargetLift = 0;
@@ -72,7 +72,7 @@ public class tuning_slides extends LinearOpMode {
             telemetry.addData("TargetLift",hello.targetValue);
             telemetry.addData("Error", hello.measuredError(ColectarePosition));
             telemetry.addData("power curent", robot.slidesLeft.getPower());
-            if (Kp!=hello.p || Kd!=hello.d || Ki!=hello.i || maxSpeed !=hello.maxOutput )
+            if (Kp!=hello.p || Kd!=hello.d || Ki!=hello.i || maxSpeed !=hello.maxOutput)
             {
                 hello.p = Kp;
                 hello.d = Kd;

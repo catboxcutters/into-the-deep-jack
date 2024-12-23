@@ -14,17 +14,20 @@ public class FourbarController {
         RUNTO,
         FLICK,
         RUNG,
-        SCORE;
+        SCORE,
+        FEED, RUNG_PARA;
     }
     public FourbarStatus currentStatus = FourbarStatus.INIT;
     public FourbarStatus previousStatus=null;
     public static double init_position=0.8;
-    public static double rung_position = 0.3;
+    public static double rung_position = 0.25;
     public static double sub_position = 0.42;
-    public static double sub_collect_position = 0.36;
+    public static double sub_collect_position = 0.3;
     public static double collect_position = 0.86;
     public static double score_position = 0.4;
+    public static double rung_para_position = 0.05;
     public static double flick = 0.47;
+    public static double feed = 0.7;
     public Servo fourbarLeft = null, fourbarRight = null;
     public FourbarController(RobotMap robot) {
         this.fourbarLeft=robot.fourbarLeft;
@@ -72,10 +75,22 @@ public class FourbarController {
                     this.fourbarRight.setPosition(flick);
                     break;
                 }
+                case FEED:
+                {
+                    this.fourbarLeft.setPosition(feed);
+                    this.fourbarRight.setPosition(feed);
+                    break;
+                }
                 case RUNG:
                 {
                     this.fourbarLeft.setPosition(rung_position);
                     this.fourbarRight.setPosition(rung_position);
+                    break;
+                }
+                case RUNG_PARA:
+                {
+                    this.fourbarLeft.setPosition(rung_para_position);
+                    this.fourbarRight.setPosition(rung_para_position);
                     break;
                 }
             }

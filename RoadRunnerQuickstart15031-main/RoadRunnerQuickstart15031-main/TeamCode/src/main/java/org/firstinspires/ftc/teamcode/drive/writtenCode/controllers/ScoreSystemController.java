@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.drive.writtenCode.controllers;
 
+
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 public class ScoreSystemController
@@ -9,7 +10,7 @@ public class ScoreSystemController
         LOWER_FOURBAR,
         GRAB_SAMPLE,
         LOWER_FOURBAR_SUB, COLLECT_FROM_SUB,
-        FLICK,SCORE, OPEN_RUNG, RUNG
+        FLICK,SCORE, OPEN_RUNG, LOWER_FOURBAR_SUB_AUTO_ALIGN, RUNG, FEED, LOWER_FOURBAR_SUB_AUTO_ALIGN_RUNG, RUNG_PARA
     }
     public ScoreSystemStatus currentStatus = ScoreSystemStatus.INIT;
     public ScoreSystemStatus previousStatus=null;
@@ -19,8 +20,9 @@ public class ScoreSystemController
     private ClawPositionController clawPositionController = null;
     public ElapsedTime timer = new ElapsedTime();
     public ElapsedTime timer_flick = new ElapsedTime();
+    public static ElapsedTime timer_feed = new ElapsedTime();
     public ElapsedTime timer_reset = new ElapsedTime();
-    double delay=0.3;
+    double delay=0.1;
     double delay2=0.3;
     boolean ok;
     public ScoreSystemController(ClawController clawController, ClawRotateController clawRotateController, FourbarController fourbarController, ClawPositionController clawPositionController)
@@ -32,7 +34,15 @@ public class ScoreSystemController
     }
     public void update()
     {
-        if(currentStatus!=previousStatus || currentStatus==ScoreSystemStatus.GRAB_SAMPLE || currentStatus==ScoreSystemStatus.LOWER_FOURBAR_SUB || currentStatus==ScoreSystemStatus.FLICK || currentStatus==ScoreSystemStatus.RUNG || currentStatus==ScoreSystemStatus.OPEN_RUNG)
+        if(currentStatus!=previousStatus ||
+                currentStatus==ScoreSystemStatus.GRAB_SAMPLE ||
+                currentStatus==ScoreSystemStatus.LOWER_FOURBAR_SUB ||
+                currentStatus==ScoreSystemStatus.FLICK ||
+                currentStatus==ScoreSystemStatus.RUNG ||
+                currentStatus==ScoreSystemStatus.OPEN_RUNG ||
+                currentStatus==ScoreSystemStatus.LOWER_FOURBAR_SUB_AUTO_ALIGN ||
+                currentStatus==ScoreSystemStatus.LOWER_FOURBAR_SUB_AUTO_ALIGN_RUNG ||
+                currentStatus==ScoreSystemStatus.FEED)
         {
             previousStatus=currentStatus;
             switch(currentStatus)
@@ -74,14 +84,55 @@ public class ScoreSystemController
                 }
                 case LOWER_FOURBAR_SUB:
                 {
-                    fourbarController.currentStatus = FourbarController.FourbarStatus.COLLECT_SUB;
-                    clawPositionController.currentStatus = ClawPositionController.ClawPositionStatus.COLLECT_SUB;
-                    if(timer.seconds()>0.1)
-                    {
-                        clawController.currentStatus= ClawController.ClawStatus.CLOSE;
+                        fourbarController.currentStatus = FourbarController.FourbarStatus.COLLECT_SUB;
+                        clawPositionController.currentStatus = ClawPositionController.ClawPositionStatus.COLLECT_SUB;
+                        if (timer.seconds() > 0.1) {
+                            clawController.currentStatus = ClawController.ClawStatus.CLOSE;
+                        }
+                        if (timer.seconds() > 0.2) {
+                            currentStatus = ScoreSystemStatus.INIT;
+                        }
+                    break;
+                }
+                case LOWER_FOURBAR_SUB_AUTO_ALIGN: {
+                    if (timer.seconds() > 0.2) {
+                        fourbarController.currentStatus = FourbarController.FourbarStatus.COLLECT_SUB;
+                        clawPositionController.currentStatus = ClawPositionController.ClawPositionStatus.COLLECT_SUB;
+                        if (timer.seconds() > 0.23) {
+                            clawController.currentStatus = ClawController.ClawStatus.CLOSE;
+                        }
+                        if (timer.seconds() > 0.4) {
+                            currentStatus = ScoreSystemStatus.INIT;
+                        }
                     }
-                    if(timer.seconds()>0.2)
-                    {
+                    break;
+                }
+                case LOWER_FOURBAR_SUB_AUTO_ALIGN_RUNG:
+                {
+                    if (timer.seconds() > 0.2) {
+                        fourbarController.currentStatus = FourbarController.FourbarStatus.COLLECT_SUB;
+                        clawPositionController.currentStatus = ClawPositionController.ClawPositionStatus.COLLECT_SUB;
+                        if (timer.seconds() > 0.23) {
+                            clawController.currentStatus = ClawController.ClawStatus.CLOSE;
+                        }
+                        if (timer.seconds() > 0.4) {
+                            fourbarController.currentStatus= FourbarController.FourbarStatus.SUB;
+                            clawPositionController.currentStatus = ClawPositionController.ClawPositionStatus.RUNG_SIDE_RETRACT;
+                        }
+                        if(timer.seconds()>1.5)
+                        {
+                            currentStatus=ScoreSystemStatus.INIT;
+                        }
+                    }
+                    break;
+                }
+                case FEED:
+                {
+                    fourbarController.currentStatus= FourbarController.FourbarStatus.FEED;
+                    if(timer_feed.seconds()>0.1){
+                        clawController.currentStatus= ClawController.ClawStatus.OPEN;
+                    }
+                    if(timer_feed.seconds()>0.5){
                         currentStatus=ScoreSystemStatus.INIT;
                     }
                     break;
@@ -106,6 +157,12 @@ public class ScoreSystemController
                     fourbarController.currentStatus= FourbarController.FourbarStatus.RUNG;
                     clawPositionController.currentStatus= ClawPositionController.ClawPositionStatus.RUNG;
                     timer_reset.reset();
+                    break;
+                }
+                case RUNG_PARA:
+                {
+                    fourbarController.currentStatus= FourbarController.FourbarStatus.RUNG_PARA;
+                    clawPositionController.currentStatus= ClawPositionController.ClawPositionStatus.RUNG;
                     break;
                 }
                 case OPEN_RUNG:
